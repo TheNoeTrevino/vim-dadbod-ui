@@ -415,6 +415,37 @@ ic
 
 		By default, mapped to `<Leader>S`.
 
+					      *<Plug>(DBUI_ExplainQuery)*
+<Plug>(DBUI_ExplainQuery)
+		Run the query under the cursor through the database's `EXPLAIN`
+		(query planner) and show the plan in the results buffer.
+		Supports normal and visual mode. Normal mode explains the
+		whole buffer, visual mode explains only the selection. The
+		query itself is NOT executed.
+
+		By default, mapped to `<Leader>X`.
+
+					      *<Plug>(DBUI_ExplainAnalyzeQuery)*
+<Plug>(DBUI_ExplainAnalyzeQuery)
+		Same as |<Plug>(DBUI_ExplainQuery)|, but uses `EXPLAIN ANALYZE`,
+		which reports actual run times and row counts. Note that
+		`EXPLAIN ANALYZE` actually EXECUTES the query; for data-modifying
+		statements (INSERT/UPDATE/DELETE/...) you will be asked to
+		confirm first.
+
+		The prefixes used are taken per-scheme from the schema
+		definition (`explain_prefix` / `explain_analyze_prefix`),
+		falling back to `EXPLAIN` / `EXPLAIN ANALYZE`. For PostgreSQL
+		the analyze prefix is `EXPLAIN (ANALYZE, BUFFERS)`.
+
+		Not mapped by default. To use it, add a mapping, for example: >
+		augroup dbui_sql
+		  autocmd!
+		  autocmd FileType sql nmap <buffer> <Leader>A <Plug>(DBUI_ExplainAnalyzeQuery)
+		  autocmd FileType sql vmap <buffer> <Leader>A <Plug>(DBUI_ExplainAnalyzeQuery)
+		augroup END
+<
+
 					      *<Plug>(DBUI_ToggleResultLayout)*
 <Plug>(DBUI_ToggleResultLayout)
 		Toggle expanded view in the results buffer (column and value

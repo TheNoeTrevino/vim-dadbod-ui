@@ -50,6 +50,8 @@ let s:postgresql = {
       \ 'schemes_query': s:postgres_list_schema_query,
       \ 'schemes_tables_query': s:postgres_tables_and_views,
       \ 'select_foreign_key_query': 'select * from "%s"."%s" where "%s" = %s',
+      \ 'explain_prefix': 'EXPLAIN',
+      \ 'explain_analyze_prefix': 'EXPLAIN (ANALYZE, BUFFERS)',
       \ 'cell_line_number': 2,
       \ 'cell_line_pattern': '^-\++-\+',
       \ 'parse_results': {results,min_len -> s:results_parser(filter(results, '!empty(v:val)')[1:-2], '|', min_len)},

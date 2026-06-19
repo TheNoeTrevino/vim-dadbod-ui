@@ -173,6 +173,10 @@ function! s:query.setup_buffer(db, opts, buffer_name, was_single_win) abort
   nnoremap <silent><buffer><Plug>(DBUI_EditBindParameters) :call <sid>method('edit_bind_parameters')<CR>
   nnoremap <silent><buffer><Plug>(DBUI_ExecuteQuery) :call <sid>method('execute_query')<CR>
   vnoremap <silent><buffer><Plug>(DBUI_ExecuteQuery) :<C-u>call <sid>method('execute_query', 1)<CR>
+  nnoremap <silent><buffer><Plug>(DBUI_ExplainQuery) :call <sid>method('explain_query')<CR>
+  vnoremap <silent><buffer><Plug>(DBUI_ExplainQuery) :<C-u>call <sid>method('explain_query', 1)<CR>
+  nnoremap <silent><buffer><Plug>(DBUI_ExplainAnalyzeQuery) :call <sid>method('explain_analyze_query')<CR>
+  vnoremap <silent><buffer><Plug>(DBUI_ExplainAnalyzeQuery) :<C-u>call <sid>method('explain_analyze_query', 1)<CR>
   if is_tmp && is_sql
     nnoremap <silent><buffer><silent><Plug>(DBUI_SaveQuery) :call <sid>method('save_query')<CR>
   endif
@@ -260,6 +264,76 @@ function! s:query.execute_lines(db, lines, is_visual_mode) abort
   endif
 
   return lines
+endfunction
+
+function! s:query.explain_query(...) abort
+  return self.do_explain(get(a:, 1, 0), 0)
+endfunction
+
+function! s:query.explain_analyze_query(...) abort
+  return self.do_explain(get(a:, 1, 0), 1)
+endfunction
+
+function! s:query.do_explain(is_visual_mode, analyze) abort
+  if !exists('b:dbui_db_key_name') || !has_key(self.drawer.dbui.dbs, b:dbui_db_key_name)
+    return db_ui#notifications#error('Cannot explain - not a valid dadbod-ui query buffer.')
+  endif
+
+  let db = self.drawer.dbui.dbs[b:dbui_db_key_name]
+  let lines = self.get_lines(a:is_visual_mode)
+  if empty(filter(copy(lines), '!empty(trim(v:val))'))
+    return db_ui#notifications#error('Cannot explain an empty query.')
+  endif
+
+  " EXPLAIN ANALYZE actually executes the statement. Guard against running it
+  " on data-modifying queries without explicit confirmation.
+  if a:analyze && s:is_write_query(lines)
+    if confirm('EXPLAIN ANALYZE will execute this data-modifying query. Continue?', "&Yes\n&No", 2) !=? 1
+      return db_ui#notifications#info('Canceled.')
+    endif
+  endif
+
+  if match(join(lines), s:bind_param_rgx) > -1
+    try
+      let lines = self.inject_variables(lines)
+    catch /.*/
+      return db_ui#notifications#error(v:exception)
+    endtry
+  endif
+
+  let scheme = db_ui#schemas#get(db.scheme)
+  let key = a:analyze ? 'explain_analyze_prefix' : 'explain_prefix'
+  let prefix = get(scheme, key, a:analyze ? 'EXPLAIN ANALYZE' : 'EXPLAIN')
+  let lines = s:prepend_explain(lines, prefix)
+
+  call s:start_query()
+  let filename = tempname().'.'.db#adapter#call(db.conn, 'input_extension', [], 'sql')
+  call writefile(lines, filename)
+  call db_ui#utils#print_debug({'message': 'Explaining query', 'lines': lines, 'command': 'DB < '.filename })
+  silent! exe 'DB < '.filename
+
+  if exists('*db#cancel')
+    call db_ui#notifications#info('Explaining query...')
+  else
+    call s:print_query_time()
+  endif
+  let self.last_query = lines
+endfunction
+
+function! s:prepend_explain(lines, prefix) abort
+  let lines = copy(a:lines)
+  for i in range(len(lines))
+    if !empty(trim(lines[i]))
+      let lines[i] = a:prefix.' '.lines[i]
+      break
+    endif
+  endfor
+  return lines
+endfunction
+
+function! s:is_write_query(lines) abort
+  let first_word = matchstr(trim(join(a:lines, ' ')), '^\s*\zs\w\+')
+  return first_word =~? '^\%(insert\|update\|delete\|truncate\|drop\|alter\|create\|merge\|replace\|grant\|revoke\)$'
 endfunction
 
 function! s:query.get_lines(is_visual_mode) abort
