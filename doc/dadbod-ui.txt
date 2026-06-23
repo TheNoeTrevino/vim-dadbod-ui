@@ -238,6 +238,40 @@ connection, open up DBUI drawer and press `d` (|<Plug>(DBUI_DeleteLine|) on
 the connection you want to delete.
 
 ==============================================================================
+4.4 Grouping connections			*vim-dadbod-ui-connections-groups*
+
+Connections can be grouped under a collapsible header in the drawer by giving
+them a `group`. This is handy when you have many connections that belong
+together, e.g. all databases living on the same host.
+
+A group is just a label. Connections sharing the same group value are rendered
+nested under a single foldable header, in the order they are defined.
+Connections without a group keep rendering at the top level as before.
+
+Because grouped connections are namespaced by their group, the same connection
+`name` may be reused across different groups (e.g. a `postgres` database under
+both a `Local` and a `Remote` group).
+
+Via `connections.json` (|DBUIAddConnection| source), add a `group` key:
+>
+  [
+    { "name": "postgres", "url": "...", "group": "Local" },
+    { "name": "tremolo",  "url": "...", "group": "Local" },
+    { "name": "postgres", "url": "...", "group": "Remote" }
+  ]
+<
+Via `g:dbs` (array form only), add a `group` key to the entry:
+>
+  let g:dbs = [
+  \ { 'name': 'postgres', 'url': 'postgres://...', 'group': 'Local' },
+  \ { 'name': 'tremolo', 'url': 'postgres://...', 'group': 'Local' },
+  \ ]
+<
+Groups are expanded by default. To have them start collapsed, set: >
+
+  let g:db_ui_expand_groups = 0
+<
+==============================================================================
 
 5. Mappings					*vim-dadbod-ui-mappings*
 
@@ -898,6 +932,14 @@ g:db_ui_drawer_sections
 		let g:db_ui_drawer_sections = ['schemas', 'new_query']
 <
 		Default value: `['new_query', 'buffers', 'saved_queries', 'schemas']`
+
+					      *g:db_ui_expand_groups*
+g:db_ui_expand_groups
+			Whether connection groups (see
+			|vim-dadbod-ui-connections-groups|) start expanded in
+			the drawer. Set to 0 to have all groups start collapsed.
+
+			Default value: `1`
 
 					      *g:db_ui_dbout_list_sort*
 g:db_ui_dbout_list_sort
