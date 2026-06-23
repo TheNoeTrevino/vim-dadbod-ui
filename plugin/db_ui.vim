@@ -34,6 +34,7 @@ let g:db_ui_hide_schemas = get(g:, 'db_ui_hide_schemas', [])
 let g:db_ui_bind_param_pattern = get(g: , 'db_ui_bind_param_pattern', ':\w\+')
 let g:db_ui_is_oracle_legacy = get(g:, 'db_ui_is_oracle_legacy', 0)
 let g:db_ui_drawer_sections = get(g:, 'db_ui_drawer_sections', ['new_query', 'buffers', 'saved_queries', 'schemas'])
+let g:db_ui_expand_groups = get(g:, 'db_ui_expand_groups', 1)
 let g:db_ui_dbout_list_sort = get(g:, 'db_ui_dbout_list_sort', 'asc')
 
 let s:dbui_icons = get(g:, 'db_ui_icons', {})
@@ -65,6 +66,7 @@ let g:db_ui_icons = {
       \   'schema': s:expanded_icon,
       \   'tables': s:expanded_icon,
       \   'table': s:expanded_icon,
+      \   'group': s:expanded_icon,
       \ },
       \ 'collapsed': {
       \   'db': s:collapsed_icon,
@@ -74,6 +76,7 @@ let g:db_ui_icons = {
       \   'schema': s:collapsed_icon,
       \   'tables': s:collapsed_icon,
       \   'table': s:collapsed_icon,
+      \   'group': s:collapsed_icon,
       \ },
       \ 'saved_query': '*',
       \ 'new_query': '+',
@@ -114,6 +117,14 @@ if g:db_ui_use_nerd_fonts
         \ 'connection_ok': '✓',
         \ 'connection_error': '✕',
         \ }
+endif
+
+" Connection groups reuse the db icon unless explicitly overridden
+if !has_key(g:db_ui_icons.expanded, 'group')
+  let g:db_ui_icons.expanded.group = g:db_ui_icons.expanded.db
+endif
+if !has_key(g:db_ui_icons.collapsed, 'group')
+  let g:db_ui_icons.collapsed.group = g:db_ui_icons.collapsed.db
 endif
 
 let g:db_ui_icons.expanded = extend(g:db_ui_icons.expanded, s:expanded_icons)
