@@ -100,7 +100,11 @@ function! s:connections.rename(db) abort
   endtry
 
   call remove(connections, idx)
-  let connections = insert(connections, {'name': name, 'url': url }, idx)
+  let new_entry = {'name': name, 'url': url }
+  if !empty(get(entry, 'group', ''))
+    let new_entry.group = entry.group
+  endif
+  let connections = insert(connections, new_entry, idx)
   return self.write(connections)
 endfunction
 
