@@ -105,7 +105,7 @@ Phases 1–3 have no UI; we validate them with unit tests + a scratch harness.
 | 0 | scaffold, `dadbod.lua`, `utils.lua`, `notifications.lua`, `config.lua` | utils + notification unit tests; corrupted-file message |
 | 1 | `schemas.lua`, `table_helpers.lua` | helper templates, scheme aliases, `List` fallback |
 | 2 | `state.lua`, `database.lua`, `sources.lua`, `connections.lua` | all initialization tests (g:dbs var/array-fn/dict-fn, env, dotenv, custom env, combined), dedup warning, add/edit/delete, corrupted file |
-| 3 | `query.lua` (+ bind params) | open-query, table-helpers, bind-parameters (default + custom), buffer naming, tmp location, save/rename, auto-execute |
+| 3 | `query.lua` (+ bind params, explain) | open-query, table-helpers, bind-parameters (default + custom), buffer naming, tmp location, save/rename, auto-execute, explain/explain-analyze (write-query guard, per-scheme prefix) |
 | 4 | `drawer/*` | db-navigation, goto-sibling/node, find-buffer, toggle-details, drawer-sections, show-help, delete-buffer, custom-icons, connection-groups, toggle/quit, mods, disable-mappings |
 | 5 | `dbout.lua` | FK jump, cell yank, header yank, layout toggle, fold; progress spinner |
 | 6 | `init.lua` glue, statusline, polish | mods, statusline variants, full-suite pass |

@@ -76,6 +76,8 @@ the VimScript does. See §9 for the full external dependency surface.
 | `<Leader>S` (n & v) | `(DBUI_ExecuteQuery)` | Execute buffer (n) / selection (v) |
 | `<Leader>W` | `(DBUI_SaveQuery)` | Persist a temp query |
 | `<Leader>E` | `(DBUI_EditBindParameters)` | Edit bind params |
+| `<Leader>X` (n & v) | `(DBUI_ExplainQuery)` | `EXPLAIN` the buffer (n) / selection (v); query not executed |
+| _(unmapped)_ | `(DBUI_ExplainAnalyzeQuery)` | `EXPLAIN ANALYZE`; **executes** the query (write-query guard) |
 
 JS mappings are applied **only** when the buffer was created by dbui
 (`b:dbui_db_key_name` is set) — i.e. MongoDB query buffers.
@@ -336,6 +338,36 @@ buffer line `SELECT * FROM contacts` and `b:dbui_table_name == 'contacts'`.
 
 ---
 
+### 5.5 Explain / Explain Analyze
+
+`do_explain(is_visual, analyze)` — backs both `(DBUI_ExplainQuery)` (analyze=0) and
+`(DBUI_ExplainAnalyzeQuery)` (analyze=1):
+
+- Guard: require a valid dbui query buffer (`b:dbui_db_key_name` resolves to a known
+  db) → else `error('Cannot explain - not a valid dadbod-ui query buffer.')`.
+- Get lines (whole buffer or visual selection). Empty (after trim) → `error('Cannot
+  explain an empty query.')`.
+- **Write-query guard (analyze only):** if the first SQL word is one of
+  `insert|update|delete|truncate|drop|alter|create|merge|replace|grant|revoke`,
+  `confirm('EXPLAIN ANALYZE will execute this data-modifying query. Continue?', ...)`
+  defaulting to **No**; on decline → `info('Canceled.')` and abort. (EXPLAIN ANALYZE
+  actually runs the statement.)
+- Inject bind params if present (same path as execute; errors surface via `error`).
+- Resolve prefix from the scheme: `explain_analyze_prefix` / `explain_prefix`, falling
+  back to `'EXPLAIN ANALYZE'` / `'EXPLAIN'`. PostgreSQL overrides analyze to
+  `'EXPLAIN (ANALYZE, BUFFERS)'`.
+- `prepend_explain`: prefix is prepended to the **first non-blank line only**; the
+  rest of the buffer is untouched and **the source buffer is never rewritten** (the
+  explained text goes through a temp file).
+- Execute via temp file: `tempname().<input_extension>` → `writefile` → `DB < file`.
+  Async → `info('Explaining query...')`, else `print_query_time`. Store as
+  `last_query`. Results land in the `.dbout` preview buffer.
+
+Contract (test-explain-query): after `(DBUI_ExplainQuery)` on `SELECT * FROM contacts`,
+the `.dbout` buffer is populated and the source line `getline(1)` is still exactly
+`SELECT * FROM contacts`. `schemas.get('postgresql').explain_prefix == 'EXPLAIN'` and
+`.explain_analyze_prefix` matches `ANALYZE`.
+
 ## 6. Output buffer (`dbout`)
 
 `*.dbout` files → `filetype=dbout`; `BufReadPost` → `db_ui#save_dbout`. Folding via
@@ -368,8 +400,10 @@ saved_query='*', new_query='+', tables='~', buffers='»',
 add_connection='[+]', connection_ok='✓', connection_error='✕'
 ```
 
-`use_nerd_fonts=1` swaps in glyphs for the expanded/collapsed sets (ok/error
-unchanged). Custom icons fully override (test-custom-icons uses `[+]`/`[-]`).
+The `group` key (connection-groups feature) is present in both sets; if the user does
+not override it, it **falls back to the `db` icon**. `use_nerd_fonts=1` swaps in glyphs
+for the expanded/collapsed sets (ok/error unchanged). Custom icons fully override
+(test-custom-icons uses `[+]`/`[-]`).
 
 Syntax (`syntax/dbui.vim`) generates `dbui_<group>` matches from the icon dict, all
 linking to `Directory`, plus `dbui_saved_query→String`, `dbui_new_query→Operator`,
@@ -426,8 +460,11 @@ The **only** integration points. Lua calls these via `vim.fn[...]` / `vim.cmd`:
 Per-scheme metadata (args, `schemes_query`, `schemes_tables_query`,
 `foreign_key_query`, `select_foreign_key_query`, `parse_results`,
 `cell_line_number`/`pattern`, `quote`, `default_scheme`, `layout_flag`, `filetype`,
-`requires_stdin`, `has_virtual_results`) for postgres/mysql/mariadb/sqlserver/oracle/
-bigquery/clickhouse — ported verbatim from `schemas.vim`. Table-helper templates for
+`requires_stdin`, `has_virtual_results`, and the explain prefixes
+`explain_prefix`/`explain_analyze_prefix` — present on PostgreSQL:
+`'EXPLAIN'` / `'EXPLAIN (ANALYZE, BUFFERS)'`) for
+postgres/mysql/mariadb/sqlserver/oracle/bigquery/clickhouse — ported verbatim from
+`schemas.vim`. Table-helper templates for
 those + sqlite/mongodb ported verbatim from `table_helpers.vim` (incl. scheme aliases
 postgres↔postgresql, sqlite↔sqlite3; empty-string helper removal; fallback `List=''`).
 
@@ -448,7 +485,8 @@ plus `notifications.{info,warning,error,get_last_msg}`.
 
 ## 11. Test contract
 
-The 47 themis tests in `test/` define acceptance. The Lua port must pass an equivalent
+The themis tests in `test/` define acceptance (incl. `test-connection-groups` and
+`test-explain-query`). The Lua port must pass an equivalent
 suite (ported to plenary/busted, or run the existing themis suite against a thin
 VimScript→Lua shim). Behaviors enumerated above each map to a named test; the
 load-bearing assertion values are quoted inline. **Any deviation from a quoted value is
